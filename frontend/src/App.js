@@ -19,8 +19,12 @@ import ApiKeysPage from './pages/ApiKeysPage';
 import WebhooksPage from './pages/WebhooksPage';
 import ModelsPage from './pages/ModelsPage';
 import SettingsPage from './pages/SettingsPage';
+import KnowledgeRagPage from './pages/KnowledgeRagPage';
+import CostSummaryPage from './pages/CostSummaryPage';
+import AgentChainPage from './pages/AgentChainPage';
+import MultiModelRoutePage from './pages/MultiModelRoutePage';
 
-import { FiServer, FiTool, FiCpu, FiFileText, FiFolder, FiGitBranch, FiBook, FiActivity, FiMessageSquare, FiList, FiKey, FiLink, FiBox, FiSettings, FiHome, FiLogOut, FiMenu } from 'react-icons/fi';
+import { FiServer, FiTool, FiCpu, FiFileText, FiFolder, FiGitBranch, FiBook, FiActivity, FiMessageSquare, FiList, FiKey, FiLink, FiBox, FiSettings, FiHome, FiLogOut, FiMenu, FiSearch, FiDollarSign, FiShare2, FiShuffle } from 'react-icons/fi';
 
 const menuItems = [
   { path: '/', label: 'Dashboard', icon: FiHome },
@@ -37,6 +41,10 @@ const menuItems = [
   { path: '/apikeys', label: 'API Keys', icon: FiKey },
   { path: '/webhooks', label: 'Webhooks', icon: FiLink },
   { path: '/models', label: 'Models', icon: FiBox },
+  { path: '/knowledge-rag', label: 'Knowledge RAG', icon: FiSearch },
+  { path: '/cost-summary', label: 'Cost Summary', icon: FiDollarSign },
+  { path: '/agent-chain', label: 'Agent Chain', icon: FiShare2 },
+  { path: '/multi-model-route', label: 'Multi-Model Route', icon: FiShuffle },
   { path: '/settings', label: 'Settings', icon: FiSettings },
 ];
 
@@ -118,6 +126,10 @@ function App() {
         <Route path="/apikeys" element={<ProtectedRoute><ApiKeysPage /></ProtectedRoute>} />
         <Route path="/webhooks" element={<ProtectedRoute><WebhooksPage /></ProtectedRoute>} />
         <Route path="/models" element={<ProtectedRoute><ModelsPage /></ProtectedRoute>} />
+        <Route path="/knowledge-rag" element={<ProtectedRoute><KnowledgeRagPage /></ProtectedRoute>} />
+        <Route path="/cost-summary" element={<ProtectedRoute><CostSummaryPage /></ProtectedRoute>} />
+        <Route path="/agent-chain" element={<ProtectedRoute><AgentChainPage /></ProtectedRoute>} />
+        <Route path="/multi-model-route" element={<ProtectedRoute><MultiModelRoutePage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       </Routes>
     </Router>
