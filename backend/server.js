@@ -26,6 +26,12 @@ app.use('/api/models', require('./routes/models'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/marketplace', require('./routes/marketplace')); app.use('/api/cost-budgets', require('./routes/costBudgets')); app.use('/api/ai-stream', require('./routes/aiStream')); app.use('/api/agent-debate', require('./routes/agentDebate')); app.use('/api/eval-harness', require('./routes/evalHarness')); app.use('/api/voice-action', require('./routes/voiceAction'));
 
+// Custom Views (mounted before 404)
+app.use('/api/custom-views', require('./routes/customViews'));
+
+// Health endpoint
+app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+
 // Dashboard stats
 const pool = require('./db');
 app.get('/api/dashboard', require('./middleware/auth'), async (req, res) => {
@@ -70,3 +76,6 @@ app.use('/api/gap-no-deployment-management-rolling-deploy-canary', require('./ro
 app.use('/api/gap-no-collaborative-prompt-editing', require('./routes/gap_no_collaborative_prompt_editing'));
 app.use('/api/gap-no-sso-oidc-integration', require('./routes/gap_no_sso_oidc_integration'));
 app.use('/api/gap-no-fine-grained-rbac-per-agent', require('./routes/gap_no_fine_grained_rbac_per_agent'));
+
+// 404 handler (must remain last)
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not found', path: req.originalUrl }));
