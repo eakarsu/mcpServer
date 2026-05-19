@@ -4,6 +4,41 @@ const pool = require('../db');
 const auth = require('../middleware/auth');
 const router = express.Router();
 
+// Centralized OpenRouter call with 503-on-no-key behavior.
+async function callOpenRouter(messages, { temperature = 0.5, max_tokens = 2000, tools, tool_choice } = {}) {
+  if (!process.env.OPENROUTER_API_KEY) {
+    const err = new Error('AI service unavailable: OPENROUTER_API_KEY not set');
+    err.statusCode = 503;
+    throw err;
+  }
+  const body = { model: process.env.OPENROUTER_MODEL, messages, temperature, max_tokens };
+  if (tools) body.tools = tools;
+  if (tool_choice) body.tool_choice = tool_choice;
+  const r = await axios.post(`${process.env.OPENROUTER_BASE_URL}/chat/completions`, body, {
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'http://localhost:3000',
+      'X-Title': 'MCP Server Platform',
+    }
+  });
+  return r.data;
+}
+
+function parseAIJson(text) {
+  if (!text || typeof text !== 'string') return null;
+  const trimmed = text.trim();
+  try { return JSON.parse(trimmed); } catch (_) {}
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) { try { return JSON.parse(fenced[1].trim()); } catch (_) {} }
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(trimmed.slice(start, end + 1)); } catch (_) {}
+  }
+  return null;
+}
+
 router.post('/chat', auth, async (req, res) => {
   try {
     const { message, agent_id, conversation_id } = req.body;
@@ -220,6 +255,213 @@ router.delete('/conversations/:id', auth, async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ message: 'Deleted successfully' });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Knowledge-base RAG: keyword/ILIKE retrieval over knowledge_base + LLM answer
+router.post('/knowledge-rag', auth, async (req, res) => {
+  try {
+    const { query, category, limit } = req.body || {};
+    if (!query) return res.status(400).json({ error: 'query is required' });
+
+    const max = Math.min(parseInt(limit, 10) || 5, 20);
+    const params = [`%${query}%`];
+    let sql = `SELECT id, title, content, category, source FROM knowledge_base WHERE (title ILIKE $1 OR content ILIKE $1)`;
+    if (category) {
+      params.push(category);
+      sql += ` AND category = $${params.length}`;
+    }
+    sql += ` ORDER BY updated_at DESC LIMIT ${max}`;
+    const docs = await pool.query(sql, params);
+
+    const context = docs.rows.map((d, i) => `Doc ${i + 1} [${d.category || 'general'}] ${d.title}\n${(d.content || '').slice(0, 1500)}`).join('\n\n---\n\n');
+
+    const response = await axios.post(
+      `${process.env.OPENROUTER_BASE_URL}/chat/completions`,
+      {
+        model: process.env.OPENROUTER_MODEL,
+        messages: [
+          { role: 'system', content: 'You answer using the provided knowledge-base documents. If the answer is not in the docs, say so. Cite Doc numbers when relevant.' },
+          { role: 'user', content: `Question: ${query}\n\nKnowledge Base Documents:\n${context || '(no documents found)'}` }
+        ],
+        temperature: 0.3,
+        max_tokens: 1500,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'http://localhost:3000',
+          'X-Title': 'MCP Server Platform',
+        }
+      }
+    );
+
+    const answer = response.data?.choices?.[0]?.message?.content || '';
+    res.json({
+      answer,
+      retrieved: docs.rows.map(d => ({ id: d.id, title: d.title, category: d.category, source: d.source })),
+      model: response.data?.model,
+      usage: response.data?.usage,
+    });
+  } catch (err) {
+    console.error('knowledge-rag error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Aggregate AI usage cost summary (token-level rollup per conversation/agent/model)
+router.get('/cost-summary', auth, async (req, res) => {
+  try {
+    // Best-effort: aggregate from conversation_messages if it carries usage data, else fall back to counts
+    const days = Math.min(parseInt(req.query.days, 10) || 30, 365);
+    let totalsByAgent = { rows: [] };
+    let totalsByModel = { rows: [] };
+    try {
+      totalsByAgent = await pool.query(
+        `SELECT a.id AS agent_id, a.name AS agent_name, COUNT(cm.*) AS messages
+         FROM conversation_messages cm
+         LEFT JOIN conversations c ON c.id = cm.conversation_id
+         LEFT JOIN agents a ON a.id = c.agent_id
+         WHERE cm.created_at > NOW() - INTERVAL '${days} days'
+         GROUP BY a.id, a.name
+         ORDER BY messages DESC`
+      );
+    } catch (_) { /* schema may differ; ignore */ }
+    try {
+      totalsByModel = await pool.query(
+        `SELECT a.model AS model, COUNT(cm.*) AS messages
+         FROM conversation_messages cm
+         LEFT JOIN conversations c ON c.id = cm.conversation_id
+         LEFT JOIN agents a ON a.id = c.agent_id
+         WHERE cm.created_at > NOW() - INTERVAL '${days} days'
+         GROUP BY a.model
+         ORDER BY messages DESC`
+      );
+    } catch (_) { /* ignore */ }
+
+    res.json({
+      windowDays: days,
+      perAgent: totalsByAgent.rows,
+      perModel: totalsByModel.rows,
+      note: 'Counts only — full token/USD cost tracking requires storing usage per message (planned).'
+    });
+  } catch (err) {
+    console.error('cost-summary error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ai/agent-chain — execute a sequence of agents, piping each one's output into the next.
+router.post('/agent-chain', auth, async (req, res) => {
+  try {
+    const { agent_ids, initial_message } = req.body || {};
+    if (!Array.isArray(agent_ids) || agent_ids.length === 0) {
+      return res.status(400).json({ error: 'agent_ids (non-empty array) is required' });
+    }
+    if (!initial_message || typeof initial_message !== 'string') {
+      return res.status(400).json({ error: 'initial_message is required' });
+    }
+
+    const steps = [];
+    let currentInput = initial_message;
+    for (const id of agent_ids) {
+      const agentResult = await pool.query('SELECT id, name, system_prompt FROM agents WHERE id = $1', [id]);
+      if (agentResult.rows.length === 0) {
+        steps.push({ agent_id: id, error: 'Agent not found' });
+        continue;
+      }
+      const agent = agentResult.rows[0];
+      const systemPrompt = agent.system_prompt || 'You are a helpful AI assistant.';
+      const data = await callOpenRouter(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: currentInput }
+        ],
+        { temperature: 0.6, max_tokens: 1500 }
+      );
+      const output = data?.choices?.[0]?.message?.content || '';
+      steps.push({
+        agent_id: agent.id,
+        agent_name: agent.name,
+        input: currentInput,
+        output,
+        model: data?.model,
+        usage: data?.usage,
+      });
+      currentInput = output;
+    }
+
+    res.json({
+      final_output: currentInput,
+      steps,
+      step_count: steps.length,
+    });
+  } catch (err) {
+    if (err.statusCode === 503) return res.status(503).json({ error: err.message });
+    console.error('agent-chain error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/ai/multi-model-route — try primary model, fall back to alternates if it fails.
+router.post('/multi-model-route', auth, async (req, res) => {
+  try {
+    const { message, primary_model, fallback_models, system_prompt } = req.body || {};
+    if (!message || typeof message !== 'string') return res.status(400).json({ error: 'message is required' });
+    if (!process.env.OPENROUTER_API_KEY) {
+      return res.status(503).json({ error: 'AI service unavailable: OPENROUTER_API_KEY not set' });
+    }
+
+    const candidates = [primary_model || process.env.OPENROUTER_MODEL]
+      .concat(Array.isArray(fallback_models) ? fallback_models : [])
+      .filter(Boolean);
+
+    const attempts = [];
+    let success = null;
+    for (const model of candidates) {
+      try {
+        const r = await axios.post(
+          `${process.env.OPENROUTER_BASE_URL}/chat/completions`,
+          {
+            model,
+            messages: [
+              { role: 'system', content: system_prompt || 'You are a helpful AI assistant.' },
+              { role: 'user', content: message }
+            ],
+            temperature: 0.5,
+            max_tokens: 1500,
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'http://localhost:3000',
+              'X-Title': 'MCP Server Platform',
+            }
+          }
+        );
+        attempts.push({ model, status: 'ok' });
+        success = {
+          model_used: model,
+          response: r.data?.choices?.[0]?.message?.content || '',
+          model: r.data?.model,
+          usage: r.data?.usage,
+        };
+        break;
+      } catch (e) {
+        attempts.push({ model, status: 'failed', error: e.response?.data?.error?.message || e.message });
+      }
+    }
+
+    if (!success) {
+      return res.status(502).json({ error: 'All models failed', attempts });
+    }
+
+    res.json({ ...success, attempts });
+  } catch (err) {
+    console.error('multi-model-route error:', err.response?.data || err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

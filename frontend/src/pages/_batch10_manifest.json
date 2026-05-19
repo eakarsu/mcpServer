@@ -1,0 +1,24 @@
+{
+  "marker": "// === Batch 10 Gaps & Frontend Mounts ===",
+  "project": "mcpServer",
+  "items": [
+    "<Route path=\"/batch10/cf-plugin-marketplace-with-publish-discover-rate\" element={<CfPluginMarketplaceWithPublishDiscoverRate />} />",
+    "<Route path=\"/batch10/cf-per-tenant-cost-budgets-with-alerts\" element={<CfPerTenantCostBudgetsWithAlerts />} />",
+    "<Route path=\"/batch10/cf-streaming-responses-cancellation-across-rest-websocket\" element={<CfStreamingResponsesCancellationAcrossRestWebsocket />} />",
+    "<Route path=\"/batch10/cf-agent-debate-vote-framework-with-explainable\" element={<CfAgentDebateVoteFrameworkWithExplainable />} />",
+    "<Route path=\"/batch10/cf-eval-harness-replay-audited-prompts-against\" element={<CfEvalHarnessReplayAuditedPromptsAgainst />} />",
+    "<Route path=\"/batch10/cf-voice-to-action-front-door-voice\" element={<CfVoiceToActionFrontDoorVoice />} />",
+    "<Route path=\"/batch10/gap-rag-endpoint-present-but-multi-modal\" element={<GapRagEndpointPresentButMultiModal />} />",
+    "<Route path=\"/batch10/gap-no-streaming-responses-inventoried\" element={<GapNoStreamingResponsesInventoried />} />",
+    "<Route path=\"/batch10/gap-no-advanced-agent-debate-voting-orchestration\" element={<GapNoAdvancedAgentDebateVotingOrchestration />} />",
+    "<Route path=\"/batch10/gap-no-human-in-the-loop-approval\" element={<GapNoHumanInTheLoopApproval />} />",
+    "<Route path=\"/batch10/gap-no-safety-refusal-classifier\" element={<GapNoSafetyRefusalClassifier />} />",
+    "<Route path=\"/batch10/gap-no-prompt-eval-harness\" element={<GapNoPromptEvalHarness />} />",
+    "<Route path=\"/batch10/gap-no-marketplace-ui-for-plugins-tools\" element={<GapNoMarketplaceUiForPluginsTools />} />",
+    "<Route path=\"/batch10/gap-no-per-tenant-cost-budgeting-alerts\" element={<GapNoPerTenantCostBudgetingAlerts />} />",
+    "<Route path=\"/batch10/gap-no-deployment-management-rolling-deploy-canary\" element={<GapNoDeploymentManagementRollingDeployCanary />} />",
+    "<Route path=\"/batch10/gap-no-collaborative-prompt-editing\" element={<GapNoCollaborativePromptEditing />} />",
+    "<Route path=\"/batch10/gap-no-sso-oidc-integration\" element={<GapNoSsoOidcIntegration />} />",
+    "<Route path=\"/batch10/gap-no-fine-grained-rbac-per-agent\" element={<GapNoFineGrainedRbacPerAgent />} />"
+  ]
+}
