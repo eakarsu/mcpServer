@@ -76,6 +76,7 @@ app.use('/api/gap-no-deployment-management-rolling-deploy-canary', require('./ro
 app.use('/api/gap-no-collaborative-prompt-editing', require('./routes/gap_no_collaborative_prompt_editing'));
 app.use('/api/gap-no-sso-oidc-integration', require('./routes/gap_no_sso_oidc_integration'));
 app.use('/api/gap-no-fine-grained-rbac-per-agent', require('./routes/gap_no_fine_grained_rbac_per_agent'));
+app.use('/api/tool-blast-radius', require('./routes/toolBlastRadius'));
 
 // 404 handler (must remain last)
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found', path: req.originalUrl }));

@@ -25,7 +25,13 @@ import AgentChainPage from './pages/AgentChainPage';
 import MultiModelRoutePage from './pages/MultiModelRoutePage';
 import CustomViewsPage from './pages/CustomViewsPage';
 
-import { FiServer, FiTool, FiCpu, FiFileText, FiFolder, FiGitBranch, FiBook, FiActivity, FiMessageSquare, FiList, FiKey, FiLink, FiBox, FiSettings, FiHome, FiLogOut, FiMenu, FiSearch, FiDollarSign, FiShare2, FiShuffle, FiGrid } from 'react-icons/fi';
+import { FiServer, FiTool, FiCpu, FiFileText, FiFolder, FiGitBranch, FiBook, FiActivity, FiMessageSquare, FiList, FiKey, FiLink, FiBox, FiSettings, FiHome, FiLogOut, FiMenu, FiSearch, FiDollarSign, FiShare2, FiShuffle, FiGrid, FiShield } from 'react-icons/fi';
+
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
+import ToolBlastRadiusPage from './pages/ToolBlastRadiusPage';
 
 const menuItems = [
   { path: '/', label: 'Dashboard', icon: FiHome },
@@ -47,6 +53,7 @@ const menuItems = [
   { path: '/agent-chain', label: 'Agent Chain', icon: FiShare2 },
   { path: '/multi-model-route', label: 'Multi-Model Route', icon: FiShuffle },
   { path: '/custom-views', label: 'MCP Views', icon: FiGrid },
+  { path: '/tool-blast-radius', label: 'Tool Blast Radius', icon: FiShield },
   { path: '/settings', label: 'Settings', icon: FiSettings },
 ];
 
@@ -113,6 +120,10 @@ function App() {
     <Router>
       <ToastContainer position="top-right" autoClose={3000} theme="dark" />
       <Routes>
+        <Route path="/insights/timeline" element={<ProtectedRoute><TimelineView /></ProtectedRoute>} />
+        <Route path="/codex/custom-viz" element={<ProtectedRoute><CodexCustomVizFeature /></ProtectedRoute>} />
+        <Route path="/codex/operations" element={<ProtectedRoute><CodexOperationsFeature /></ProtectedRoute>} />
+
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/servers" element={<ProtectedRoute><ServersPage /></ProtectedRoute>} />
@@ -133,6 +144,7 @@ function App() {
         <Route path="/agent-chain" element={<ProtectedRoute><AgentChainPage /></ProtectedRoute>} />
         <Route path="/multi-model-route" element={<ProtectedRoute><MultiModelRoutePage /></ProtectedRoute>} />
         <Route path="/custom-views" element={<ProtectedRoute><CustomViewsPage /></ProtectedRoute>} />
+        <Route path="/tool-blast-radius" element={<ProtectedRoute><ToolBlastRadiusPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       </Routes>
     </Router>
