@@ -1,13 +1,23 @@
+if (process.env.MCP_REFERENCE_ACKNOWLEDGEMENT !== 'unsupported-reference-only') {
+  console.error('Refusing to seed the unsupported mcpServer reference snapshot.');
+  process.exit(78);
+}
+
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
-require('dotenv').config({ path: '../../.env' });
+require('dotenv').config({ path: require('node:path').resolve(__dirname, '../../.env') });
+for (const name of ['DB_NAME', 'DB_USER', 'DB_PASSWORD']) {
+  if (typeof process.env[name] !== 'string' || process.env[name].length === 0) {
+    throw new Error(`${name} is required for controlled reference use`);
+  }
+}
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'mcp_server',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
 });
 
 async function seed() {
@@ -201,7 +211,11 @@ async function seed() {
   `);
 
   // Seed Users
-  const hash = await bcrypt.hash('admin123', 10);
+  const referenceAdminPassword = process.env.REFERENCE_ADMIN_PASSWORD;
+  if (typeof referenceAdminPassword !== 'string' || referenceAdminPassword.length < 16) {
+    throw new Error('REFERENCE_ADMIN_PASSWORD must contain at least 16 characters');
+  }
+  const hash = await bcrypt.hash(referenceAdminPassword, 12);
   await pool.query(`DELETE FROM users`);
   await pool.query(`INSERT INTO users (email, password_hash, name, role) VALUES ($1, $2, $3, $4)`, ['admin@mcpserver.com', hash, 'Admin User', 'admin']);
 
@@ -415,21 +429,21 @@ async function seed() {
   // Seed API Keys (15 items)
   await pool.query(`DELETE FROM api_keys`);
   const apikeys = [
-    ['Production API Key', 'mcp_prod_abc123def456', 'mcp_prod_abc...', '["read","write","execute"]', 'active'],
-    ['Staging API Key', 'mcp_stg_xyz789ghi012', 'mcp_stg_xyz7...', '["read","write"]', 'active'],
-    ['Development Key', 'mcp_dev_jkl345mno678', 'mcp_dev_jkl3...', '["read","write","execute","admin"]', 'active'],
-    ['CI/CD Pipeline Key', 'mcp_ci_pqr901stu234', 'mcp_ci_pqr90...', '["read","execute"]', 'active'],
-    ['Monitoring Service', 'mcp_mon_vwx567yza890', 'mcp_mon_vwx5...', '["read"]', 'active'],
-    ['Backup Service Key', 'mcp_bak_bcd123efg456', 'mcp_bak_bcd1...', '["read","write"]', 'active'],
-    ['Analytics Dashboard', 'mcp_ana_hij789klm012', 'mcp_ana_hij7...', '["read"]', 'active'],
-    ['External Partner A', 'mcp_ext_nop345qrs678', 'mcp_ext_nop3...', '["read"]', 'active'],
-    ['External Partner B', 'mcp_ext_tuv901wxy234', 'mcp_ext_tuv9...', '["read"]', 'inactive'],
-    ['Testing Key', 'mcp_tst_zab567cde890', 'mcp_tst_zab5...', '["read","write","execute"]', 'active'],
-    ['Webhook Service', 'mcp_whk_fgh123ijk456', 'mcp_whk_fgh1...', '["read","execute"]', 'active'],
-    ['Mobile App Key', 'mcp_mob_lmn789opq012', 'mcp_mob_lmn7...', '["read"]', 'active'],
-    ['Admin Console', 'mcp_adm_rst345uvw678', 'mcp_adm_rst3...', '["read","write","execute","admin"]', 'active'],
-    ['Legacy System', 'mcp_leg_xyz901abc234', 'mcp_leg_xyz9...', '["read"]', 'revoked'],
-    ['Temp Debug Key', 'mcp_tmp_def567ghi890', 'mcp_tmp_def5...', '["read","write","execute"]', 'expired'],
+    ['Production API Key', null, 'disabled', '["read","write","execute"]', 'active'],
+    ['Staging API Key', null, 'disabled', '["read","write"]', 'active'],
+    ['Development Key', null, 'disabled', '["read","write","execute","admin"]', 'active'],
+    ['CI/CD Pipeline Key', null, 'disabled', '["read","execute"]', 'active'],
+    ['Monitoring Service', null, 'disabled', '["read"]', 'active'],
+    ['Backup Service Key', null, 'disabled', '["read","write"]', 'active'],
+    ['Analytics Dashboard', null, 'disabled', '["read"]', 'active'],
+    ['External Partner A', null, 'disabled', '["read"]', 'active'],
+    ['External Partner B', null, 'disabled', '["read"]', 'inactive'],
+    ['Testing Key', null, 'disabled', '["read","write","execute"]', 'active'],
+    ['Webhook Service', null, 'disabled', '["read","execute"]', 'active'],
+    ['Mobile App Key', null, 'disabled', '["read"]', 'active'],
+    ['Admin Console', null, 'disabled', '["read","write","execute","admin"]', 'active'],
+    ['Legacy System', null, 'disabled', '["read"]', 'revoked'],
+    ['Temp Debug Key', null, 'disabled', '["read","write","execute"]', 'expired'],
   ];
   for (const k of apikeys) {
     await pool.query('INSERT INTO api_keys (name, api_key, key_prefix, permissions, status) VALUES ($1,$2,$3,$4,$5)', k);
@@ -438,21 +452,21 @@ async function seed() {
   // Seed Webhooks (15 items)
   await pool.query(`DELETE FROM webhooks`);
   const webhooks = [
-    ['Deployment Notify', 'https://hooks.slack.com/services/T00/B00/deploy', '["deployment.completed","deployment.failed"]', 'whsec_deploy123', 'active', '{"Content-Type":"application/json"}'],
-    ['PR Review Hook', 'https://hooks.slack.com/services/T00/B00/review', '["pr.created","pr.merged"]', 'whsec_review456', 'active', '{"Content-Type":"application/json"}'],
-    ['Alert Manager', 'https://alertmanager.example.com/webhook', '["alert.critical","alert.warning"]', 'whsec_alert789', 'active', '{"Authorization":"Bearer token123"}'],
-    ['Audit Logger', 'https://audit.example.com/events', '["*"]', 'whsec_audit012', 'active', '{"Content-Type":"application/json"}'],
-    ['PagerDuty', 'https://events.pagerduty.com/integration/abc/enqueue', '["incident.created","incident.resolved"]', 'whsec_pd345', 'active', '{"Content-Type":"application/json"}'],
-    ['Datadog Events', 'https://api.datadoghq.com/api/v1/events', '["metric.threshold","error.spike"]', 'whsec_dd678', 'active', '{"DD-API-KEY":"ddkey123"}'],
-    ['GitHub Status', 'https://api.github.com/repos/org/repo/statuses', '["build.success","build.failure"]', 'whsec_gh901', 'active', '{"Authorization":"token ghp_xxx"}'],
-    ['Jira Integration', 'https://jira.example.com/webhook/mcp', '["task.created","task.completed"]', 'whsec_jira234', 'active', '{"Content-Type":"application/json"}'],
-    ['Email Digest', 'https://email-service.example.com/digest', '["daily.summary"]', 'whsec_email567', 'active', '{"Content-Type":"application/json"}'],
-    ['Metrics Collector', 'https://metrics.example.com/ingest', '["tool.executed","agent.completed"]', 'whsec_metrics890', 'active', '{"Content-Type":"application/json"}'],
-    ['Security Scanner', 'https://security.example.com/scan', '["code.pushed","dependency.updated"]', 'whsec_sec123', 'active', '{"Content-Type":"application/json"}'],
-    ['Teams Notify', 'https://outlook.office.com/webhook/abc/IncomingWebhook', '["deployment.completed","incident.created"]', 'whsec_teams456', 'inactive', '{"Content-Type":"application/json"}'],
-    ['Custom Analytics', 'https://analytics.internal.com/events', '["user.action","agent.interaction"]', 'whsec_analytics789', 'active', '{"Content-Type":"application/json"}'],
-    ['Backup Monitor', 'https://backup-mon.example.com/status', '["backup.completed","backup.failed"]', 'whsec_backup012', 'active', '{"Content-Type":"application/json"}'],
-    ['Compliance Logger', 'https://compliance.example.com/audit', '["data.accessed","permission.changed"]', 'whsec_comply345', 'active', '{"Content-Type":"application/json"}'],
+    ['Deployment Notify', 'https://hooks.slack.com/services/T00/B00/deploy', '["deployment.completed","deployment.failed"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['PR Review Hook', 'https://hooks.slack.com/services/T00/B00/review', '["pr.created","pr.merged"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['Alert Manager', 'https://alertmanager.example.com/webhook', '["alert.critical","alert.warning"]', null, 'active', '{"Authorization":"Bearer token123"}'],
+    ['Audit Logger', 'https://audit.example.com/events', '["*"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['PagerDuty', 'https://events.pagerduty.com/integration/abc/enqueue', '["incident.created","incident.resolved"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['Datadog Events', 'https://api.datadoghq.com/api/v1/events', '["metric.threshold","error.spike"]', null, 'active', '{"DD-API-KEY":"ddkey123"}'],
+    ['GitHub Status', 'https://api.github.com/repos/org/repo/statuses', '["build.success","build.failure"]', null, 'active', '{"Authorization":"token ghp_xxx"}'],
+    ['Jira Integration', 'https://jira.example.com/webhook/mcp', '["task.created","task.completed"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['Email Digest', 'https://email-service.example.com/digest', '["daily.summary"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['Metrics Collector', 'https://metrics.example.com/ingest', '["tool.executed","agent.completed"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['Security Scanner', 'https://security.example.com/scan', '["code.pushed","dependency.updated"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['Teams Notify', 'https://outlook.office.com/webhook/abc/IncomingWebhook', '["deployment.completed","incident.created"]', null, 'inactive', '{"Content-Type":"application/json"}'],
+    ['Custom Analytics', 'https://analytics.internal.com/events', '["user.action","agent.interaction"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['Backup Monitor', 'https://backup-mon.example.com/status', '["backup.completed","backup.failed"]', null, 'active', '{"Content-Type":"application/json"}'],
+    ['Compliance Logger', 'https://compliance.example.com/audit', '["data.accessed","permission.changed"]', null, 'active', '{"Content-Type":"application/json"}'],
   ];
   for (const w of webhooks) {
     await pool.query('INSERT INTO webhooks (name, url, events, secret, status, headers) VALUES ($1,$2,$3,$4,$5,$6)', w);

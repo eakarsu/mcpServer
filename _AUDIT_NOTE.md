@@ -1,5 +1,8 @@
 # Audit Note - mcpServer
 
+> Historical implementation log only. This is not release evidence. The controlling
+> 2026-07-20 decision is in `REFERENCE_STATUS.md`; default execution now fails closed.
+
 Source: `_AUDIT/reports/batch_10.md` (lines 341-364).
 
 ## Original Audit Recommendations

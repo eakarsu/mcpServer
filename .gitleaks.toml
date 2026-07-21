@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Initial snapshot commit contains seven retired synthetic demo API-key findings; future commits are not allowlisted"
+commits = [
+  "b28292f54e540b673f1352a99f774b7348fce34a",
+]

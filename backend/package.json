@@ -4,9 +4,12 @@
   "description": "MCP Server / Tool-Use Agents Backend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "seed": "node seeds/seed.js"
+    "start": "node ../scripts/archive-notice.js",
+    "dev": "node ../scripts/archive-notice.js",
+    "seed": "node ../scripts/archive-notice.js",
+    "reference:start": "node server.js",
+    "reference:dev": "nodemon server.js",
+    "reference:seed": "node seeds/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

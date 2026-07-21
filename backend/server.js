@@ -1,6 +1,14 @@
+if (process.env.MCP_REFERENCE_ACKNOWLEDGEMENT !== 'unsupported-reference-only') {
+  console.error('mcpServer is an unsupported reference snapshot. Read REFERENCE_STATUS.md.');
+  process.exit(78);
+}
+
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: require('node:path').resolve(__dirname, '../.env') });
+if (typeof process.env.JWT_SECRET !== 'string' || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must contain at least 32 characters for controlled reference use');
+}
 
 const app = express();
 const PORT = process.env.BACKEND_PORT || 3001;

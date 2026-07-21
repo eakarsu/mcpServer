@@ -14,8 +14,10 @@
     "react-syntax-highlighter": "^15.5.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build"
+    "start": "node ../scripts/archive-notice.js",
+    "build": "node ../scripts/archive-notice.js",
+    "reference:start": "react-scripts start",
+    "reference:build": "react-scripts build"
   },
   "proxy": "http://localhost:3001",
   "browserslist": {

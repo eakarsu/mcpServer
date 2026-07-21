@@ -9,11 +9,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const fillCredentials = () => {
-    setEmail('admin@mcpserver.com');
-    setPassword('admin123');
-  };
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -35,9 +30,6 @@ export default function Login() {
       <div className="login-card">
         <h1 className="login-title">MCP Platform</h1>
         <p className="login-subtitle">Model Context Protocol Server Management</p>
-        <button className="fill-btn" onClick={fillCredentials}>
-          Click to fill demo credentials
-        </button>
         <form onSubmit={handleLogin}>
           <div className="form-group">
             <label className="form-label">Email</label>

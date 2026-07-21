@@ -1,0 +1,46 @@
+name: reference-archive-policy
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reference-archive-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify fail-closed archive boundary
+        run: bash scripts/verify-archive.sh
+
+      - name: Tracked current-tree and history secret gates
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 dir /repo --redact
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact
+
+      - name: Advisory visibility for frozen lockfiles
+        continue-on-error: true
+        run: |
+          npm audit --package-lock-only --omit=dev --audit-level=critical --prefix backend
+          npm audit --package-lock-only --omit=dev --audit-level=critical --prefix frontend
+
+      - name: Assert this is not a release workflow
+        run: |
+          test ! -e Dockerfile
+          test ! -e docker-compose.yml
+          test ! -e compose.yaml
+          test ! -e .openai/hosting.json
