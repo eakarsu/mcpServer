@@ -2,9 +2,9 @@
 
 ## Retention decision
 
-**Decision date:** 2026-07-20  
-**Decision:** retain as a frozen internal reference snapshot.  
-**Product status:** no supported application, release, service, API, or end-user journey.  
+**Decision date:** 2026-07-20
+**Decision:** retain as a frozen internal reference snapshot.
+**Product status:** no supported application, release, service, API, or end-user journey.
 **Deployment status:** prohibited until the extraction criteria below are met.
 
 The repository contains a React dashboard, Express/PostgreSQL backend, destructive demo seed, and numerous audit-generated feature/gap scaffolds. That makes the source executable, but it does not establish a maintained product boundary. Safe defaults now fail closed so an ordinary start, development, build, or seed command cannot accidentally present this snapshot as production software.
