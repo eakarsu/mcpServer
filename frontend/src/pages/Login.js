@@ -42,6 +42,7 @@ export default function Login() {
           <button className="login-btn" type="submit" disabled={loading}>
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
+        <button type="button" onClick={(e) => { e.preventDefault(); setEmail('admin@demo.local'); setPassword('Demo!23456'); }}>Log In as Demo</button>
         </form>
       </div>
     </div>
